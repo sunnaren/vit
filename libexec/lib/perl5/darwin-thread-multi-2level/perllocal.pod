@@ -1,0 +1,22 @@
+=head2 Tue Sep 27 16:25:52 2016: C<Module> L<Curses|Curses>
+
+=over 4
+
+=item *
+
+C<installed into: /usr/local/Cellar/vit/1.2_1/libexec/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.31>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+

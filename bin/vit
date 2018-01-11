@@ -1,0 +1,2 @@
+#!/bin/bash
+PERL5LIB="/usr/local/Cellar/vit/1.2_1/libexec/lib/perl5" exec "/usr/local/Cellar/vit/1.2_1/libexec/bin/vit" "$@"
