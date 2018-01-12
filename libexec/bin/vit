@@ -256,6 +256,61 @@ sub prompt_quit {
 }
 
 #------------------------------------------------------------------
+sub task_tickle {
+  my $str = &prompt_str("Tickler: ");
+  if ( $str eq '' ) {
+    &draw_prompt_line('');
+    return;
+  }
+  my ($es,$result) = &task_exec("add +in +tickle wait:$str");
+  if ( $es != 0 ) {
+    $error_msg = $result;
+    &draw_error_msg();
+    return;
+  }
+  $feedback_msg = $result;
+  $reread_needed = 1;
+}
+#------------------------------------------------------------------
+sub create_sub_task {
+  my $proj = shift;
+  my $id = shift;
+  &audit("got sub task project : $proj");
+  my $str = &prompt_str("(done to end)AI: ");
+  if ( $str eq '' ) {
+    &draw_prompt_line('');
+    return;
+  }
+  if ($str eq 'done') {
+  return "done";
+  }
+  my ($es,$result) = &task_exec("add +next depends:$id proj:$proj $str");
+  if ( $es != 0 ) {
+    $error_msg = $result;
+    &draw_error_msg();
+    return "done";
+    }
+  $feedback_msg = $result;
+  $reread_needed = 1;
+  &draw_feedback_msg();
+}
+#------------------------------------------------------------------
+sub task_inbox {
+  my $str = &prompt_str("Collect: ");
+  if ( $str eq '' ) {
+    &draw_prompt_line('');
+    return;
+  }
+  my ($es,$result) = &task_exec("add +in $str");
+  if ( $es != 0 ) {
+    $error_msg = $result;
+    &draw_error_msg();
+    return;
+  }
+  $feedback_msg = $result;
+  $reread_needed = 1;
+}
+#------------------------------------------------------------------
 
 sub task_add {
   my $str = &prompt_str("Add: ");
@@ -274,13 +329,20 @@ sub task_add {
 }
 
 #------------------------------------------------------------------
-sub task_set_tag {
+sub task_set_tag_prompt {
   my $id = $report2taskid[$task_selected_idx];
-  my $tags = &prompt_str("Tag: ");
-  if ( $tags eq '' ) {
+  my $str = &prompt_str("Tag: ");
+  if ( $str eq '' ) {
     &draw_prompt_line('');
     return;
   }
+  &task_set_tag("$str");
+  $reread_needed = 1;
+}
+#------------------------------------------------------------------
+sub task_set_tag {
+  my $id = $report2taskid[$task_selected_idx];
+  my $tags = shift;
 
   # multiple tags can be input separated by a combination of spaces and commas
   # note that this input format precludes inputting a comma as part of a tag
@@ -400,6 +462,18 @@ sub task_filter {
 
 #------------------------------------------------------------------
 
+sub task_deffer_prompt {
+  my $id = $report2taskid[$task_selected_idx];
+  my $str = &prompt_str("Wait till: ");
+  if ( $str eq '' ) {
+    &draw_prompt_line('');
+    return;
+  }
+  &task_modify("wait:$str");
+  $reread_needed = 1;
+}
+#------------------------------------------------------------------
+
 sub task_modify {
   my $args = $_[0];
   my $id = $report2taskid[$task_selected_idx];
@@ -431,7 +505,7 @@ sub sub_task_prompt {
   }
   &shell_exec("$task add dep:$id $str",'no-wait');
   $reread_needed = 1;
-  
+
 }
 
 
@@ -488,6 +562,7 @@ sub task_set_project {
   $feedback_msg = "Modified task $id.";
   &flash_current_task();
   $reread_needed = 1;
+  return $p;
 }
 
 #------------------------------------------------------------------
@@ -1098,18 +1173,231 @@ sub getch_loop {
         &ungetstr($action);
         last CASE;
       }
+      #---------Customizied for GTD--------Start-------
       if ( $ch eq ',' ) {
         my $ch = $report_win->getch();
-        &audit("Received key after ,: $ch");
-
+        &audit("Received key: $ch");
         CASE: {
+        #-------GTD Collect mappings --------------
         if ( $ch eq 'a' ) {
-        &task_add();
-        last CASE;
-      }
+          CASE: {
+            my $ch = $report_win->getch();
+            &audit("Received key: $ch");
+            # ,ai ---add to inbox
+            if ( $ch eq 'i' ) {
+              &task_inbox();
+              last CASE;
+            }
+            # ,at ---add to Tickler
+            if ( $ch eq 't' ) {
+              &task_tickle();
+              last CASE;
+            }
+          }
+          last CASE;
+          }
+        #-------GTD process mappings --------------
+        #-------GTD process No Action Mappings--------------
+        if ( $ch eq 'm' ) {
+          CASE: {
+            my $ch = $report_win->getch();
+            &audit("Received key: $ch");
+            # ,mt ---move to trash
+            if ( $ch eq 't' ) {
+              &task_set_tag("-in -tickle");
+              &task_den_or_del();
+              $feedback_msg = "Moved to trash";
+              &draw_feedback_msg();
+              $reread_needed = 1;
+              last CASE;
+            }
+            # ,mr ---move to reference
+            if ( $ch eq 'r' ) {
+              &task_set_tag("-in -tickle +reference");
+              $feedback_msg = "Moved to Reference";
+              &draw_feedback_msg();
+              $reread_needed = 1;
+              last CASE;
+            }
+            # ,ms ---move to reference
+            if ( $ch eq 'r' ) {
+              &task_set_tag("-in -tickle +SomeDay");
+              $feedback_msg = "Moved to SomeDay/Maybe";
+              &draw_feedback_msg();
+              $reread_needed = 1;
+              last CASE;
+            }
+          }
+          last CASE;
+          }
+        #-------GTD process Delegate Mappings--------------
+        if ( $ch eq 'd' ) {
+          CASE: {
+            my $ch = $report_win->getch();
+            &audit("Received key: $ch");
+            # ,dt ---Delegate To
+            if ( $ch eq 't' ) {
+              &task_set_tag("-in -tickle +waiting");
+              $feedback_msg = "Delegated, waiting task";
+              &draw_feedback_msg();
+              $reread_needed = 1;
+              last CASE;
+            }
+          }
+          last CASE;
+          }
+        #-------GTD process Deffer Mappings--------------
+        if ( $ch eq 'w' ) {
+          CASE: {
+            my $ch = $report_win->getch();
+            &audit("Received key: $ch");
+            # ,wt ---wait till
+            if ( $ch eq 't' ) {
+              &task_set_tag("+in +tickle");
+              &task_deffer_prompt();
+              $feedback_msg = "Deffered, waiting task";
+              &draw_feedback_msg();
+              $reread_needed = 1;
+              last CASE;
+            }
+          }
+          last CASE;
+          }
+        #-------GTD process Actionable Mappings--------------
+        if ( $ch eq 'm' ) {
+          CASE: {
+            my $ch = $report_win->getch();
+            &audit("Received key: $ch");
+            # ,mn ---Delegate To
+            if ( $ch eq 'n' ) {
+              &task_set_tag("-in -tickle +next");
+              &task_deffer_prompt();
+              $feedback_msg = "Move to next list";
+              &draw_feedback_msg();
+              $reread_needed = 1;
+              last CASE;
+            }
+          }
+          last CASE;
+          }
+        #-------GTD process project Mappings--------------
+        if ( $ch eq 'p' ) {
+          CASE: {
+            my $ch = $report_win->getch();
+            my $id = $report2taskid[$task_selected_idx];
+            &audit("Received key: $ch");
+            # ,pt ---Project Task
+            if ( $ch eq 't' ) {
+              my $pro = &task_info('Project');
+              if ($pro eq '' ) {
+              $pro = &task_set_project();
+              }
+              &audit("Received project $pro");
+              my $str = "";
+              until($str eq "done"){
+              $str = &create_sub_task("$pro", $id);
+              &audit("Received str $str");
+              &read_report('refresh');
+              &draw_screen();
+              }
+              &task_set_tag("-in -tickle +next");
+              $feedback_msg = "Creating Project and Tasks";
+              &draw_feedback_msg();
+              $reread_needed = 1;
+              last CASE;
+            }
+          }
+          last CASE;
+          }
+        #-------GTD context Mappings--------------
+        if ( $ch eq 'c' ) {
+          CASE: {
+            my $ch = $report_win->getch();
+            &audit("Received key: $ch");
+            # ,ch ---set context To home
+            if ( $ch eq 'h' ) {
+              &task_set_tag("+\@home");
+              last CASE;
+            }
+            # ,cw ---set context To work
+            if ( $ch eq 'w' ) {
+              &task_set_tag("+\@work");
+              last CASE;
+            }
+            # ,cp ---set context To phone
+            if ( $ch eq 'p' ) {
+              &task_set_tag("+\@phone");
+              last CASE;
+            }
+            # ,cd ---set context To dash
+            if ( $ch eq 'd' ) {
+              &task_set_tag("+\@dash");
+              last CASE;
+            }
+            # ,ct ---set context To thinking
+            if ( $ch eq 't' ) {
+              &task_set_tag("+\@thinking");
+              last CASE;
+            }
+            # ,co ---set context To office
+            if ( $ch eq 'o' ) {
+              &task_set_tag("+\@office");
+              last CASE;
+            }
+            # ,ce ---set context To errands
+            if ( $ch eq 'e' ) {
+              &task_set_tag("+\@errands");
+              last CASE;
+            }
+          }
+          last CASE;
+          }
+        #-------GTD Energy Mapping--------------
+        if ( $ch eq 'e' ) {
+          CASE: {
+            my $ch = $report_win->getch();
+            my $id = $report2taskid[$task_selected_idx];
+            &audit("Received key: $ch");
+            # ,el or ,em or ,eh ---Setting energy levels
+            if ( $ch eq 'l' or $ch eq 'm' or $ch eq 'h' ) {
+              $feedback_msg = "Setting energy Level to: $ch";
+              my ($es,$result) = &task_exec("$id modify energy:$ch");
+              if ( $es != 0 ) {
+                $error_msg = $result;
+                &draw_error_msg();
+              }
+              &draw_feedback_msg();
+              $reread_needed = 1;
+              last CASE;
+            }
+          }
+          last CASE;
+          }
+        #-------GTD Priority Mapping--------------
+        if ( $ch eq 'p' ) {
+          CASE: {
+            my $ch = $report_win->getch();
+            my $id = $report2taskid[$task_selected_idx];
+            &audit("Received key: $ch");
+            # ,pl or ,pm or ,ph ---Setting Priority levels
+            if ( $ch eq 'l' or $ch eq 'm' or $ch eq 'h'or $ch eq 'n' ) {
+              my ($es,$result) = &task_exec("$id modify prio:$ch");
+              if ( $es != 0 ) {
+                $error_msg = $result;
+                &draw_error_msg();
+              }
+              $feedback_msg = "Setting Priority Level to: $ch";
+              &draw_feedback_msg();
+              $reread_needed = 1;
+              last CASE;
+            }
+          }
+          last CASE;
+          }
         }
         last CASE;
       }
+      #---------Customizied for GTD--------End-------
 
       if ( $ch eq '0' || ( $ch eq 'g' && $prev_ch eq 'g' ) ) {
         $task_selected_idx = 0;
@@ -1127,9 +1415,9 @@ sub getch_loop {
         &task_add();
         last CASE;
       }
-      
+
       if ( $ch eq 'T' ) {
-        &task_set_tag();
+        &task_set_tag_prompt();
         last CASE;
       }
 
@@ -1266,7 +1554,7 @@ sub getch_loop {
         return;
       }
 
-      if ( $ch eq 's' ) {
+      if ( $ch eq 'y' ) {
         my $majmin = &task_version('major.minor');
         if ( $majmin >= 2.3 ) {
           &shell_exec("task sync",'wait');
