@@ -1,3 +1,23 @@
+Custom mappings
+# ,ai ---add to inbox
+# ,at ---add to Tickler
+# ,ac ---add to collection. Bulk add
+# ,mt ---move to trash
+# ,mr ---move to reference
+# ,ms ---move to reference
+# ,mn ---Move to next action
+# ,dt ---Delegate To
+# ,wt ---wait till
+# ,pt ---Project Task
+# ,ch ---set context To home
+# ,cw ---set context To work
+# ,cp ---set context To phone
+# ,cd ---set context To dash
+# ,ct ---set context To thinking
+# ,co ---set context To office
+# ,ce ---set context To errands
+# ,el or ,em or ,eh ---Setting energy levels
+# ,pl or ,pm or ,ph ---Setting Priority levels
 
  cmd   a STRING        add a new task
  cmd   A STRING        add an annotation to the current task

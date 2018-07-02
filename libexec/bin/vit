@@ -284,7 +284,8 @@ sub create_sub_task {
   if ($str eq 'done') {
   return "done";
   }
-  my ($es,$result) = &task_exec("add +next depends:$id proj:$proj $str");
+  my ($es,$result) = &task_exec("add +next proj:#$proj blocks:$id $str");
+  &audit("got sub task project : $result");
   if ( $es != 0 ) {
     $error_msg = $result;
     &draw_error_msg();
@@ -296,7 +297,7 @@ sub create_sub_task {
 }
 #------------------------------------------------------------------
 sub task_inbox {
-  my $str = &prompt_str("Collect: ");
+  my $str = &prompt_str("[Done to end] Collect: ");
   if ( $str eq '' ) {
     &draw_prompt_line('');
     return;
@@ -309,6 +310,9 @@ sub task_inbox {
   }
   $feedback_msg = $result;
   $reread_needed = 1;
+  if ($str eq 'done') {
+  return "done";
+  }
 }
 #------------------------------------------------------------------
 
@@ -474,6 +478,14 @@ sub task_deffer_prompt {
 }
 #------------------------------------------------------------------
 
+sub task_deffer_till {
+  my $id = $report2taskid[$task_selected_idx];
+  my $till = shift;
+  &task_modify("wait:$till");
+  $reread_needed = 1;
+}
+#------------------------------------------------------------------
+
 sub task_modify {
   my $args = $_[0];
   my $id = $report2taskid[$task_selected_idx];
@@ -553,7 +565,7 @@ sub task_set_project {
     beep();
     return;
   }
-  my ($es,$result) = &task_exec("$id modify proj:$p");
+  my ($es,$result) = &task_exec("$id modify proj:#$p");
   if ( $es != 0 ) {
     $error_msg = $result;
     &draw_error_msg();
@@ -1150,7 +1162,6 @@ sub shell_exec {
   &draw_screen();
 }
 
-
 ########################################################
 ## getch.pl...
 # Copyright 2012 - 2013, Steve Rader
@@ -1192,12 +1203,57 @@ sub getch_loop {
             if ( $ch eq 't' ) {
               &task_tickle();
               last CASE;
+            }# ,ac ---add to collection. Bulk add
+            if ( $ch eq 'c' ) {
+              my $str = "";
+              until($str eq "done"){
+              $str = &task_inbox();
+              &audit("Received str $str");
+              &read_report('refresh');
+              &draw_screen();
+              }
+              last CASE;
             }
+
           }
           last CASE;
           }
         #-------GTD process mappings --------------
         #-------GTD process No Action Mappings--------------
+         if ( $ch eq 'n' ) {
+          CASE: {
+            my $ch = $report_win->getch();
+            &audit("Received key: $ch");
+            # ,nd ---wait till next day
+            if ( $ch eq 'd' ) {
+              &task_set_tag("+in +tickle");
+              &task_deffer_till("1d");
+              $feedback_msg = "Deffered, waiting task";
+              &draw_feedback_msg();
+              $reread_needed = 1;
+              last CASE;
+            }
+            # ,mt ---wait till next day
+            if ( $ch eq 'w' ) {
+              &task_set_tag("+in +tickle");
+              &task_deffer_till("1w");
+              $feedback_msg = "Deffered, waiting task";
+              &draw_feedback_msg();
+              $reread_needed = 1;
+              last CASE;
+            }
+            # ,mt ---wait till next month
+            if ( $ch eq 'm' ) {
+              &task_set_tag("+in +tickle");
+              &task_deffer_till("1m");
+              $feedback_msg = "Deffered, waiting task";
+              &draw_feedback_msg();
+              $reread_needed = 1;
+              last CASE;
+            }
+            last CASE;
+          }
+        }
         if ( $ch eq 'm' ) {
           CASE: {
             my $ch = $report_win->getch();
@@ -1220,9 +1276,17 @@ sub getch_loop {
               last CASE;
             }
             # ,ms ---move to reference
-            if ( $ch eq 'r' ) {
+            if ( $ch eq 's' ) {
               &task_set_tag("-in -tickle +SomeDay");
               $feedback_msg = "Moved to SomeDay/Maybe";
+              &draw_feedback_msg();
+              $reread_needed = 1;
+              last CASE;
+            }
+            # ,mn ---Move to next action
+            if ( $ch eq 'n' ) {
+              &task_set_tag("-in -tickle +next");
+              $feedback_msg = "Move to next list";
               &draw_feedback_msg();
               $reread_needed = 1;
               last CASE;
@@ -1237,7 +1301,7 @@ sub getch_loop {
             &audit("Received key: $ch");
             # ,dt ---Delegate To
             if ( $ch eq 't' ) {
-              &task_set_tag("-in -tickle +waiting");
+              &task_set_tag("-in -tickle -next +waiting");
               $feedback_msg = "Delegated, waiting task";
               &draw_feedback_msg();
               $reread_needed = 1;
@@ -1246,6 +1310,27 @@ sub getch_loop {
           }
           last CASE;
           }
+        #-------GTD process skipped Mappings for habbits--------------
+        if ( $ch eq 's' ) {
+          CASE: {
+              &task_set_tag("-in -tickle -next +skipped");
+              &task_modify("done");
+              $feedback_msg = "Habbit skipped";
+              &draw_feedback_msg();
+              $reread_needed = 1;
+              last CASE;
+            }
+         }
+        #-------GTD process Review--------------
+        if ( $ch eq 'r' ) {
+          CASE: {
+              &task_modify("reviewed");
+              $feedback_msg = "Marked as reviewed";
+              &draw_feedback_msg();
+              $reread_needed = 1;
+              last CASE;
+          }
+        }
         #-------GTD process Deffer Mappings--------------
         if ( $ch eq 'w' ) {
           CASE: {
@@ -1256,23 +1341,6 @@ sub getch_loop {
               &task_set_tag("+in +tickle");
               &task_deffer_prompt();
               $feedback_msg = "Deffered, waiting task";
-              &draw_feedback_msg();
-              $reread_needed = 1;
-              last CASE;
-            }
-          }
-          last CASE;
-          }
-        #-------GTD process Actionable Mappings--------------
-        if ( $ch eq 'm' ) {
-          CASE: {
-            my $ch = $report_win->getch();
-            &audit("Received key: $ch");
-            # ,mn ---Delegate To
-            if ( $ch eq 'n' ) {
-              &task_set_tag("-in -tickle +next");
-              &task_deffer_prompt();
-              $feedback_msg = "Move to next list";
               &draw_feedback_msg();
               $reread_needed = 1;
               last CASE;
@@ -1374,14 +1442,14 @@ sub getch_loop {
           last CASE;
           }
         #-------GTD Priority Mapping--------------
-        if ( $ch eq 'p' ) {
+        if ( $ch eq 'P' ) {
           CASE: {
             my $ch = $report_win->getch();
             my $id = $report2taskid[$task_selected_idx];
             &audit("Received key: $ch");
             # ,pl or ,pm or ,ph ---Setting Priority levels
-            if ( $ch eq 'l' or $ch eq 'm' or $ch eq 'h'or $ch eq 'n' ) {
-              my ($es,$result) = &task_exec("$id modify prio:$ch");
+            if ( $ch eq 'L' or $ch eq 'M' or $ch eq 'H') {
+              my ($es,$result) = &task_exec("$id modify priority:$ch");
               if ( $es != 0 ) {
                 $error_msg = $result;
                 &draw_error_msg();
@@ -1443,6 +1511,11 @@ sub getch_loop {
         }
         &task_done();
         last CASE;
+      }
+
+      if ( $ch eq 'b' ) {
+          &task_start_stop();
+          last CASE;
       }
 
       if ( $ch eq "e" ) {
@@ -1734,6 +1807,9 @@ sub is_printable {
   return 1;
 }
 
+#------------------------------------------------------------------
+sub task_start_stop {
+}
 #------------------------------------------------------------------
 
 sub task_version {
