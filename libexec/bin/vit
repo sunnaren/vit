@@ -1228,25 +1228,25 @@ sub getch_loop {
             if ( $ch eq 'd' ) {
               &task_set_tag("+in +tickle");
               &task_deffer_till("1d");
-              $feedback_msg = "Deffered, waiting task";
+              $feedback_msg = "Deffered, waiting task for ONE DAY";
               &draw_feedback_msg();
               $reread_needed = 1;
               last CASE;
             }
-            # ,mt ---wait till next day
+            # ,nw ---wait till next day
             if ( $ch eq 'w' ) {
               &task_set_tag("+in +tickle");
               &task_deffer_till("1w");
-              $feedback_msg = "Deffered, waiting task";
+              $feedback_msg = "Deffered, waiting task for ONE Week";
               &draw_feedback_msg();
               $reread_needed = 1;
               last CASE;
             }
-            # ,mt ---wait till next month
+            # ,nm ---wait till next month
             if ( $ch eq 'm' ) {
               &task_set_tag("+in +tickle");
               &task_deffer_till("1m");
-              $feedback_msg = "Deffered, waiting task";
+              $feedback_msg = "Deffered, waiting task for ONE Month";
               &draw_feedback_msg();
               $reread_needed = 1;
               last CASE;
@@ -1441,13 +1441,13 @@ sub getch_loop {
           }
           last CASE;
           }
-        #-------GTD Priority Mapping--------------
-        if ( $ch eq 'P' ) {
+        #-------GTD Priority/ordering Mapping--------------
+        if ( $ch eq 'o' ) {
           CASE: {
             my $ch = $report_win->getch();
             my $id = $report2taskid[$task_selected_idx];
             &audit("Received key: $ch");
-            # ,pl or ,pm or ,ph ---Setting Priority levels
+            # ,ol or ,om or ,oh ---Setting Priority levels
             if ( $ch eq 'L' or $ch eq 'M' or $ch eq 'H') {
               my ($es,$result) = &task_exec("$id modify priority:$ch");
               if ( $es != 0 ) {
