@@ -284,7 +284,7 @@ sub create_sub_task {
   if ($str eq 'done') {
   return "done";
   }
-  my ($es,$result) = &task_exec("add +next proj:#$proj blocks:$id $str");
+  my ($es,$result) = &task_exec("add +next proj:#$proj depends:$id $str");
   &audit("got sub task project : $result");
   if ( $es != 0 ) {
     $error_msg = $result;
@@ -330,6 +330,27 @@ sub task_add {
   }
   $feedback_msg = $result;
   $reread_needed = 1;
+}
+
+sub task_start_stop {
+    my ($ch, $str, $yes);
+    my $id = $report2taskid[$task_selected_idx];
+
+    my ($es, $result) = &task_exec("$id active");
+    my $prompt = "stop";
+    if ($es != 0) {
+        $prompt = "start";
+    }
+
+    my ($es, $result) = &task_exec("$id $prompt");
+    if ( $es != 0 ) {
+        $error_msg = $result;
+        &draw_error_msg();
+        return;
+    }
+    $feedback_msg = "Marked task $prompt ed.";
+    &draw_feedback_msg();
+    $reread_needed = 1;
 }
 
 #------------------------------------------------------------------
@@ -474,6 +495,18 @@ sub task_deffer_prompt {
     return;
   }
   &task_modify("wait:$str");
+  $reread_needed = 1;
+}
+#------------------------------------------------------------------
+
+sub task_estimate_prompt {
+  my $id = $report2taskid[$task_selected_idx];
+  my $str = &prompt_str("Estimated time: ");
+  if ( $str eq '' ) {
+    &draw_prompt_line('');
+    return;
+  }
+  &task_modify("estimate:$str");
   $reread_needed = 1;
 }
 #------------------------------------------------------------------
@@ -1321,11 +1354,13 @@ sub getch_loop {
               last CASE;
             }
          }
-        #-------GTD process Review--------------
-        if ( $ch eq 'r' ) {
+        #-------GTD set estimate--------------
+        if ( $ch eq 'e' ) {
           CASE: {
-              &task_modify("reviewed");
-              $feedback_msg = "Marked as reviewed";
+              &task_estimate_prompt();
+               $feedback_msg = "Task Estimate set";
+              &draw_feedback_msg();
+              $reread_needed = 1;
               &draw_feedback_msg();
               $reread_needed = 1;
               last CASE;
@@ -1807,9 +1842,6 @@ sub is_printable {
   return 1;
 }
 
-#------------------------------------------------------------------
-sub task_start_stop {
-}
 #------------------------------------------------------------------
 
 sub task_version {
