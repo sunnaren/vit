@@ -302,6 +302,9 @@ sub task_inbox {
     &draw_prompt_line('');
     return;
   }
+    if (uc($str) eq uc('done')) {
+  return "done";
+  }
   my ($es,$result) = &task_exec("add +in $str");
   if ( $es != 0 ) {
     $error_msg = $result;
@@ -310,9 +313,7 @@ sub task_inbox {
   }
   $feedback_msg = $result;
   $reread_needed = 1;
-  if ($str eq 'done') {
-  return "done";
-  }
+
 }
 #------------------------------------------------------------------
 
@@ -913,6 +914,19 @@ sub draw_feedback_msg {
 
 #------------------------------------------------------------------
 
+sub draw_hint_msg {
+  my $hint_message = shift;
+  my $len = length($hint_message);
+  $prompt_win->addstr(0, 0, ' ');
+  my $start = ($COLS/2) - ($len/2) - 3;
+  $prompt_win->clrtoeol();
+  $prompt_win->addstr(0, $start, $hint_message);
+  $prompt_win->addstr(0, $COLS - length($cursor_position) - 1, $cursor_position);
+  $prompt_win->refresh();
+}
+
+#------------------------------------------------------------------
+
 sub draw_report_line {
   my ($i,$line,$mode) = @_;
   my ($x, $t, $cp, $str);
@@ -1220,10 +1234,15 @@ sub getch_loop {
       #---------Customizied for GTD--------Start-------
       if ( $ch eq ',' ) {
         my $ch = $report_win->getch();
+        my $hint = "GTD :: ";
         &audit("Received key: $ch");
+        $hint = $hint."";
+        &draw_hint_msg($hint);
         CASE: {
         #-------GTD Collect mappings --------------
         if ( $ch eq 'a' ) {
+          $hint = $hint."Add to inbox(i), tickler(t), collection(c)";
+          &draw_hint_msg($hint);
           CASE: {
             my $ch = $report_win->getch();
             &audit("Received key: $ch");
@@ -1257,6 +1276,8 @@ sub getch_loop {
           CASE: {
             my $ch = $report_win->getch();
             &audit("Received key: $ch");
+            $hint = $hint."";
+            &draw_hint_msg($hint);
             # ,nd ---wait till next day
             if ( $ch eq 'd' ) {
               &task_set_tag("+in +tickle");
@@ -1291,6 +1312,8 @@ sub getch_loop {
           CASE: {
             my $ch = $report_win->getch();
             &audit("Received key: $ch");
+            $hint = $hint."";
+            &draw_hint_msg($hint);
             # ,mt ---move to trash
             if ( $ch eq 't' ) {
               &task_set_tag("-in -tickle");
@@ -1332,6 +1355,8 @@ sub getch_loop {
           CASE: {
             my $ch = $report_win->getch();
             &audit("Received key: $ch");
+            $hint = $hint."";
+            &draw_hint_msg($hint);
             # ,dt ---Delegate To
             if ( $ch eq 't' ) {
               &task_set_tag("-in -tickle -next +waiting");
@@ -1371,6 +1396,8 @@ sub getch_loop {
           CASE: {
             my $ch = $report_win->getch();
             &audit("Received key: $ch");
+            $hint = $hint."";
+            &draw_hint_msg($hint);
             # ,wt ---wait till
             if ( $ch eq 't' ) {
               &task_set_tag("+in +tickle");
@@ -1389,6 +1416,8 @@ sub getch_loop {
             my $ch = $report_win->getch();
             my $id = $report2taskid[$task_selected_idx];
             &audit("Received key: $ch");
+            $hint = $hint."";
+            &draw_hint_msg($hint);
             # ,pt ---Project Task
             if ( $ch eq 't' ) {
               my $pro = &task_info('Project');
@@ -1417,6 +1446,8 @@ sub getch_loop {
           CASE: {
             my $ch = $report_win->getch();
             &audit("Received key: $ch");
+            $hint = $hint."";
+            &draw_hint_msg($hint);
             # ,ch ---set context To home
             if ( $ch eq 'h' ) {
               &task_set_tag("+\@home");
@@ -1461,6 +1492,8 @@ sub getch_loop {
             my $ch = $report_win->getch();
             my $id = $report2taskid[$task_selected_idx];
             &audit("Received key: $ch");
+            $hint = $hint."";
+            &draw_hint_msg($hint);
             # ,el or ,em or ,eh ---Setting energy levels
             if ( $ch eq 'l' or $ch eq 'm' or $ch eq 'h' ) {
               $feedback_msg = "Setting energy Level to: $ch";
@@ -1482,6 +1515,8 @@ sub getch_loop {
             my $ch = $report_win->getch();
             my $id = $report2taskid[$task_selected_idx];
             &audit("Received key: $ch");
+            $hint = $hint."";
+            &draw_hint_msg($hint);
             # ,ol or ,om or ,oh ---Setting Priority levels
             if ( $ch eq 'L' or $ch eq 'M' or $ch eq 'H') {
               my ($es,$result) = &task_exec("$id modify priority:$ch");
