@@ -1344,7 +1344,7 @@ sub getch_loop {
               $reread_needed = 1;
               last CASE;
             }
-            # ,ms ---move to reference
+            # ,ms ---move to someday
             if ( $ch eq 's' ) {
               &task_set_tag("-in -tickle -next +SomeDay");
               $feedback_msg = "Moved to SomeDay/Maybe";
@@ -1389,7 +1389,7 @@ sub getch_loop {
             &draw_hint_msg($hint);
             my $ch = $report_win->getch();
             &audit("Received key: $ch");
-            # ,dt ---Delegate To
+            # ,ht ---Delegate To
             if ( $ch eq 'd' ) {
               &task_set_tag("-in -tickle -next");
               &task_modify("habbit:DONE");
@@ -1399,6 +1399,7 @@ sub getch_loop {
               $reread_needed = 1;
               last CASE;
             }
+            # ,hm ---Delegate To
             if ( ($ch eq 'm') or ($ch eq 's')) {
                   &task_set_tag("-in -tickle -next");
               &task_modify("habbit:MISSED");
